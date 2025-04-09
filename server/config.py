@@ -1,0 +1,17 @@
+# server/config.py
+DEFAULT_HOST = "0.0.0.0"
+DEFAULT_PORT = 5000
+BUFFER_SIZE = 8192
+SOCKET_TIMEOUT = 5.0
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+SCREENSHOT_QUALITY = 75
+LOG_LEVEL = "INFO"
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+UPDATE_INTERVAL = 0.5  # segundos
+AUTO_REFRESH_INTERVAL = 3  # segundos
+DEBOUNCE_DELAY = 100  # milissegundos
+LOG_DIR = "logs"
+LOG_FILE = "server.log"
+MAX_CLIENTS = 50
+MAX_PROCESSES_PER_CLIENT = 500
+MAX_SCREENSHOT_SIZE = 20 * 1024 * 1024  # 20MB
