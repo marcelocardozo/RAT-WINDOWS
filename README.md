@@ -45,6 +45,7 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
   - `socket`: Comunicação de rede cliente-servidor
   - `threading`: Suporte a operações paralelas
   - `json`: Serialização e deserialização de dados
+  - `PyInstaller`: Geração de executáveis multiplataforma
 
 ## Funcionalidades
 
