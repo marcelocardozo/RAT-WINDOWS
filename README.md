@@ -4,6 +4,11 @@
 
 O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvida em Python para monitoramento de sistemas remotos, oferecendo recursos avançados de gerenciamento e visualização de informações de sistemas. A solução permite administrar e monitorar diversos aspectos de máquinas remotas, incluindo processos, webcam, sistema de arquivos e execução de comandos, tudo através de uma interface gráfica intuitiva.
 
+## Demonstação
+
+[![RAT-WINDOWS](https://img.youtube.com/vi/X9GPy-aV_wI/0.jpg)](https://www.youtube.com/watch?v=X9GPy-aV_wI)
+
+
 ## Características Principais
 
 - 🖥️ Monitoramento remoto de sistemas
@@ -247,7 +252,7 @@ O sistema utiliza um protocolo binário proprietário baseado em comandos identi
 ### Dependências
 
 ```
-pip install psutil pillow opencv-python
+pip install psutil pillow opencv-python PyInstaller
 ```
 
 ### Instalação Manual
