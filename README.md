@@ -14,6 +14,7 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
 - 📁 Gerenciamento de arquivos remotos
 - 💻 Shell remota
 - 🔒 Comunicação segura via socket
+- 🛠️ Construtor de Cliente para Geração de Executáveis
 
 ## Arquitetura
 
@@ -125,6 +126,50 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
 - Suporte a diferentes sistemas operacionais
 - Terminação segura de comandos
 - Ambiente de execução configurável
+
+### Construtor de Cliente
+
+- Ferramenta gráfica para criação de executáveis personalizados
+- Geração simplificada de clientes para diferentes ambientes
+- Configuração flexível de parâmetros de conexão
+- Suporte para múltiplas plataformas (Windows, Linux, macOS)
+
+#### Recursos do Construtor
+
+- Configuração de host e porta do servidor
+- Personalização do nome do processo cliente
+- Geração de executável único ou em diretório
+- Opção de ocultar console durante execução
+- Suporte para ícone personalizado
+- Log detalhado do processo de compilação
+- Detecção automática de dependências
+
+#### Modos de Geração
+
+- **Arquivo Único**:
+  - Compila todo o cliente em um único executável
+  - Ideal para distribuição simplificada
+  - Maior tempo de inicialização inicial
+
+- **Diretório**:
+  - Gera pasta com executável e dependências
+  - Inicialização mais rápida
+  - Maior flexibilidade para modificações
+
+#### Exemplo de Configuração
+
+```python
+# Configurações padrão do construtor
+DEFAULT_SERVER_HOST = "10.100.3.203"
+DEFAULT_SERVER_PORT = 5000
+```
+
+#### Casos de Uso
+
+- Distribuição rápida de cliente de monitoramento
+- Implantação em ambientes corporativos
+- Criação de pacotes para diferentes sistemas operacionais
+- Personalização de configurações de conexão
 
 ## Protocolo de Comunicação
 

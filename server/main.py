@@ -3,7 +3,7 @@ import os
 import sys
 import tkinter as tk
 import logging
-from gui.main_window import ServerMainWindow
+from gui.main_window import ServerMainWindow  # Use our enhanced window
 from core.socket_server import SocketServer
 from managers.log_manager import LogManager
 from managers.process_manager import ProcessManager

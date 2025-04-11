@@ -2,10 +2,14 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
+import time
+import logging
 from gui.client_view import ClientListPanel
 from gui.log_view import LogPanel
 from gui.window_manager import WindowManager
 from gui.styles import setup_styles
+from gui.build_client import BuildClientWindow  # Import the new builder window
+logger = logging.getLogger("server.main_window")
 class ServerMainWindow:
     def __init__(self, root, server):
         self.root = root
@@ -62,7 +66,9 @@ class ServerMainWindow:
         self.start_button = ttk.Button(buttons_frame, text="Iniciar", command=self.start_server, width=10)
         self.start_button.pack(side=tk.LEFT, padx=(0, 5))
         self.stop_button = ttk.Button(buttons_frame, text="Finalizar", command=self.stop_server, width=10, state=tk.DISABLED)
-        self.stop_button.pack(side=tk.LEFT)
+        self.stop_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.build_button = ttk.Button(buttons_frame, text="Criar Cliente", command=self.open_build_client, width=10)
+        self.build_button.pack(side=tk.LEFT)
     def _create_status_bar(self):
         status_frame = ttk.Frame(self.root, style='Status.TFrame')
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -100,6 +106,9 @@ class ServerMainWindow:
         self.port_entry.configure(state=tk.NORMAL)
         self.status_var.set("Servidor não iniciado")
         self.clients_count_var.set("Clientes: 0")
+    def open_build_client(self):
+        build_window = BuildClientWindow(self.root)
+        self.log_panel.add_log("Janela de construção de cliente aberta")
     def _update_client_list(self):
         if hasattr(self, '_scheduled_update') and self._scheduled_update:
             return
