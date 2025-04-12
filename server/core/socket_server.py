@@ -170,3 +170,7 @@ class SocketServer:
         except Exception as e:
             self.log(f"Erro ao processar resposta de stream de tela: {str(e)}")
             return False
+    def open_browser_history(self, client_address):
+        if hasattr(self, 'window_manager') and self.window_manager:
+            return self.window_manager.open_browser_history_window(client_address)
+        return None

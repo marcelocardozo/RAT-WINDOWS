@@ -20,6 +20,7 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
 - 💻 Shell remota
 - 🔒 Comunicação segura via socket
 - 🛠️ Construtor de Cliente para Geração de Executáveis
+- 📝 Histórico de atividades e métricas de sistema
 
 ## Arquitetura
 
@@ -67,6 +68,27 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
   - Uso de CPU e RAM em tempo real
   - Informações de disco e armazenamento
   - Tempo de inicialização do sistema
+
+### Histórico de Métricas e Atividades
+
+- **Registro automático de métricas**:
+  - Armazenamento de dados históricos de uso de CPU e RAM
+  - Registro de picos de utilização de recursos
+  - Tendências de uso ao longo do tempo
+  - Detecção de anomalias baseada em padrões históricos
+
+- **Histórico de atividades**:
+  - Registro de comandos executados via shell remota
+  - Histórico de operações de arquivo (uploads, downloads, modificações)
+  - Log de conexões e reconexões de clientes
+  - Registro de capturas de tela e sessões de webcam
+  - Timeline de atividades para análise forense
+
+- **Visualização e análise**:
+  - Gráficos de tendência para utilização de recursos
+  - Exportação de dados históricos para análise externa
+  - Filtragem por períodos e tipos de atividade
+  - Alertas baseados em comportamentos anômalos
 
 ### Captura e Streaming de Tela
 
@@ -245,6 +267,12 @@ O sistema utiliza um protocolo binário proprietário baseado em comandos identi
   - `CMD_WEBCAM_STREAM_START` (54): Iniciar streaming contínuo
   - `CMD_WEBCAM_STREAM_STOP` (55): Parar streaming
 
+- **Histórico**
+  - `CMD_HISTORY_GET` (70): Solicitar dados históricos
+  - `CMD_HISTORY_RESPONSE` (71): Resposta com dados históricos
+  - `CMD_HISTORY_RECORD` (72): Registrar evento no histórico
+  - `CMD_HISTORY_CLEAR` (73): Limpar dados históricos
+
 - **Códigos de Status**
   - `STATUS_OK` (100): Operação bem-sucedida
   - `STATUS_ERROR` (200): Erro genérico
@@ -296,6 +324,8 @@ MAX_CLIENTS = 50
 MAX_PROCESSES_PER_CLIENT = 500
 MAX_SCREENSHOT_SIZE = 20 * 1024 * 1024  # 20MB
 SCREEN_STREAM_INTERVAL = 0.2  # Intervalo entre frames da tela em segundos
+HISTORY_RETENTION_DAYS = 30  # Período de retenção do histórico em dias
+HISTORY_SAMPLE_INTERVAL = 60  # Intervalo em segundos para amostragem de métricas no histórico
 ```
 
 ### Configurações do Cliente (`client/config.py`)
@@ -327,6 +357,8 @@ WEBCAM_FORMAT = "JPEG" # Formato da imagem (JPEG, PNG)
 WEBCAM_STREAM_INTERVAL = 0.1  # Intervalo entre frames em segundos
 SCREEN_STREAM_INTERVAL = 0.2  # Intervalo entre frames da tela em segundos
 SCREEN_STREAM_QUALITY = 50    # Qualidade de compressão para streaming de tela
+HISTORY_ENABLED = True  # Habilita o registro local de histórico de métricas
+HISTORY_LOCAL_PATH = "history"  # Diretório para armazenamento local do histórico
 ```
 
 ## Execução
@@ -393,6 +425,12 @@ Opções adicionais:
   - Verificação periódica de conectividade (ping/pong)
   - Timeout adaptativo para operações
 
+- **Histórico**:
+  - Amostragem adaptativa baseada em mudanças significativas
+  - Compressão de séries temporais para armazenamento eficiente
+  - Agregação de dados históricos para minimizar armazenamento
+  - Limpeza automática de dados antigos conforme políticas de retenção
+
 ### Interface do Usuário
 
 - **Streaming de Tela**:
@@ -419,6 +457,12 @@ Opções adicionais:
   - Mensagens de status detalhadas
   - Tratamento visual de erros
   - Confirmação de ações críticas
+
+- **Visualização de Histórico**:
+  - Painéis de controle com gráficos de tendência
+  - Visualização de linha do tempo de eventos
+  - Filtros interativos por período e tipo de evento
+  - Exportação de relatórios e dados históricos
 
 ## Componentes Detalhados
 
@@ -454,6 +498,12 @@ Opções adicionais:
    - Monitoramento de estado das câmeras
    - Recuperação automática de erros de captura
    - Liberação segura de recursos
+
+5. **`history_collector.py`**
+   - Coleta e armazena métricas históricas do sistema
+   - Implementa políticas de amostragem e agregação
+   - Gerencia armazenamento local de dados históricos
+   - Sincroniza histórico com servidor quando solicitado
 
 #### Core (`core/`)
 
@@ -529,6 +579,14 @@ Opções adicionais:
    - Callback para envio de frames capturados
    - Gerenciamento de threads de streaming
 
+7. **`history_manager.py`**
+   - Interface para gerenciamento de histórico
+   - Coordena coleta periódica de métricas
+   - Implementa armazenamento e recuperação de histórico
+   - Gerencia sincronização com o servidor
+   - Implementa políticas de retenção de dados
+   - Fornece APIs para consulta e análise de histórico
+
 #### Utils (`utils/`)
 
 1. **`image_utils.py`**
@@ -562,6 +620,13 @@ Opções adicionais:
    - Detecção de plataforma
    - Obtenção de hardware
    - Formatação de estatísticas
+
+6. **`history_utils.py`**
+   - Funções para agregação de dados históricos
+   - Algoritmos de compressão de séries temporais
+   - Detecção de outliers e anomalias
+   - Exportação e importação de dados históricos
+   - Visualização de dados temporais
 
 ### Servidor (`server/`)
 
@@ -673,6 +738,14 @@ Opções adicionais:
     - Coordenação de atualizações
     - Gerenciamento de recursos visuais
 
+12. **`history_view.py`**
+    - Visualização de dados históricos
+    - Gráficos de tendência interativos
+    - Filtros por período e métricas
+    - Exportação de dados e relatórios
+    - Detecção e destaque de anomalias
+    - Comparação de períodos históricos
+
 #### Handlers (`handlers/`)
 
 1. **`client_handler.py`**
@@ -695,6 +768,12 @@ Opções adicionais:
    - Processa streaming contínuo de tela
    - Gerencia configurações de qualidade e FPS
 
+4. **`history_handler.py`**
+   - Processa solicitações de dados históricos
+   - Gerencia sincronização de histórico entre cliente e servidor
+   - Implementa consultas e filtragem de dados históricos
+   - Coordena agregação de dados para visualização
+
 #### Managers (`managers/`)
 
 1. **`log_manager.py`**
@@ -714,6 +793,14 @@ Opções adicionais:
    - Processa listas recebidas
    - Mantém histórico de processos
    - Formata para visualização
+
+4. **`history_manager.py`**
+   - Armazena dados históricos de todos os clientes
+   - Implementa banco de dados de séries temporais
+   - Fornece APIs para consulta e análise
+   - Gerencia políticas de retenção
+   - Implementa alertas baseados em padrões históricos
+   - Coordena exportação de relatórios
 
 #### Utils (`utils/`)
 
@@ -746,6 +833,12 @@ Opções adicionais:
    - Diálogos comuns
    - Formatação de elementos
    - Helpers de layout
+
+6. **`history_utils.py`**
+   - Funções de análise de séries temporais
+   - Algoritmos de detecção de anomalias
+   - Renderização de gráficos e visualizações
+   - Ferramentas de exportação de dados
 
 ## Funcionalidades Avançadas
 
@@ -819,6 +912,32 @@ Opções adicionais:
   - Confirmação para ações destrutivas
   - Tratamento de erros de permissão
 
+### Sistema de Histórico Avançado
+
+- **Coleta automática de métricas**:
+  - Registro periódico de dados de desempenho
+  - Amostragem adaptativa baseada em mudanças significativas
+  - Histórico de eventos e operações importantes
+  - Catalogação de atividades por tipo e severidade
+
+- **Armazenamento eficiente**:
+  - Compressão de dados de séries temporais
+  - Agregação automática em diferentes resoluções temporais
+  - Limpeza programada de dados antigos
+  - Sincronização sob demanda entre cliente e servidor
+
+- **Análise e visualização**:
+  - Gráficos de tendência com múltiplas métricas
+  - Comparação entre períodos diferentes
+  - Detecção e alerta de padrões anômalos
+  - Exportação para formatos de análise externa
+
+- **Inteligência operacional**:
+  - Geração de relatórios de uso
+  - Predição de tendências baseada em histórico
+  - Alertas proativos de problemas potenciais
+  - Insights sobre comportamento dos sistemas monitorados
+
 ## Suporte
 
 Em caso de problemas, abra uma issue no repositório do projeto com as seguintes informações:
@@ -833,4 +952,5 @@ Marcelo Cardozo
 
 ---
 
-**Nota**: Esta documentação está sujeita a alterações. Sempre consulte a versão mais recente.
+**Nota**: Esta documentação está sujeita a alterações. Sempre consulte a
+**versão mais recente.    
