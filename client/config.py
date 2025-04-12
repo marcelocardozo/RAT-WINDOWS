@@ -23,3 +23,7 @@ WEBCAM_MAX_SIZE = 640  # Tamanho máximo (largura/altura) para redimensionamento
 WEBCAM_QUALITY = 50    # Qualidade JPEG (0-100)
 WEBCAM_FORMAT = "JPEG" # Formato da imagem (JPEG, PNG)
 WEBCAM_STREAM_INTERVAL = 0.1  # Intervalo entre frames em segundos
+SCREEN_STREAM_MAX_SIZE = 1280  # Tamanho máximo (largura/altura) para redimensionamento
+SCREEN_STREAM_QUALITY = 50     # Qualidade JPEG (0-100)
+SCREEN_STREAM_FORMAT = "JPEG"  # Formato da imagem (JPEG, PNG)
+SCREEN_STREAM_INTERVAL = 0.1   # Intervalo entre frames em segundos

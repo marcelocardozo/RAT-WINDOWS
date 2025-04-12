@@ -13,7 +13,7 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
 
 - 🖥️ Monitoramento remoto de sistemas
 - 📊 Coleta de informações do sistema em tempo real
-- 📸 Captura de tela remota
+- 📸 Captura e streaming de tela remota
 - 📹 Visualização e streaming de webcam
 - 📋 Gerenciamento de processos
 - 📁 Gerenciamento de arquivos remotos
@@ -68,14 +68,25 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
   - Informações de disco e armazenamento
   - Tempo de inicialização do sistema
 
-### Captura de Tela
+### Captura e Streaming de Tela
 
-- Captura em tempo real da tela do cliente
-- Redimensionamento automático para otimização
-- Compressão inteligente para economizar largura de banda
-- Salvamento de imagens em diversos formatos (JPEG, PNG)
-- Visualização com zoom e navegação
-- Atualização automática ou manual
+- **Captura única**:
+  - Captura em tempo real da tela do cliente
+  - Redimensionamento automático para otimização
+  - Compressão inteligente para economizar largura de banda
+  - Salvamento de imagens em diversos formatos (JPEG, PNG)
+  - Visualização com zoom e navegação
+  - Atualização automática ou manual
+
+- **Streaming contínuo**:
+  - Monitoramento contínuo da tela remota
+  - Buffer de frames para renderização suave
+  - Ajuste de intervalo de atualização
+  - Configuração de qualidade para otimizar performance
+  - Controle de taxa de frames para reduzir consumo de rede
+  - Opção de atualização sob demanda ou automática
+  - Suporte para múltiplos monitores/telas
+  - Visualização em tempo real das atividades do usuário remoto
 
 ### Webcam
 
@@ -199,6 +210,8 @@ O sistema utiliza um protocolo binário proprietário baseado em comandos identi
 - **Captura de Tela**
   - `CMD_SCREENSHOT_SINGLE` (4): Solicitação de captura única
   - `CMD_SCREENSHOT_RESPONSE` (5): Resposta com dados da captura
+  - `CMD_SCREENSHOT_STREAM_START` (6): Iniciar streaming contínuo da tela
+  - `CMD_SCREENSHOT_STREAM_STOP` (7): Parar streaming da tela
 
 - **Gerenciamento de Processos**
   - `CMD_PROCESS_LIST` (10): Solicitação de lista de processos
@@ -282,6 +295,7 @@ LOG_DIR = "logs"
 MAX_CLIENTS = 50
 MAX_PROCESSES_PER_CLIENT = 500
 MAX_SCREENSHOT_SIZE = 20 * 1024 * 1024  # 20MB
+SCREEN_STREAM_INTERVAL = 0.2  # Intervalo entre frames da tela em segundos
 ```
 
 ### Configurações do Cliente (`client/config.py`)
@@ -311,6 +325,8 @@ WEBCAM_MAX_SIZE = 640  # Tamanho máximo (largura/altura) para redimensionamento
 WEBCAM_QUALITY = 50    # Qualidade JPEG (0-100)
 WEBCAM_FORMAT = "JPEG" # Formato da imagem (JPEG, PNG)
 WEBCAM_STREAM_INTERVAL = 0.1  # Intervalo entre frames em segundos
+SCREEN_STREAM_INTERVAL = 0.2  # Intervalo entre frames da tela em segundos
+SCREEN_STREAM_QUALITY = 50    # Qualidade de compressão para streaming de tela
 ```
 
 ## Execução
@@ -352,6 +368,13 @@ Opções adicionais:
 
 ### Performance
 
+- **Streaming de Tela**:
+  - Compressão adaptativa baseada em mudanças na tela
+  - Detecção de áreas de mudança para transmissão parcial
+  - Suporte para diferentes resoluções e taxas de quadros
+  - Otimização para baixa largura de banda
+  - Buffer de frames com prioridade para renderização
+
 - **Streaming de Webcam**:
   - Buffer de frames para renderização suave
   - Manutenção de conexão aberta com a câmera
@@ -371,6 +394,13 @@ Opções adicionais:
   - Timeout adaptativo para operações
 
 ### Interface do Usuário
+
+- **Streaming de Tela**:
+  - Controle de taxa de atualização (FPS)
+  - Ajuste de qualidade de imagem
+  - Opções de escala (ajustar à janela, tamanho real)
+  - Seleção de monitor em sistemas multi-monitor
+  - Indicadores de performance da rede
 
 - **Webcam**:
   - Controle deslizante de qualidade (10% a 90%)
@@ -407,6 +437,8 @@ Opções adicionais:
    - Processa e otimiza imagens capturadas
    - Suporta múltiplos monitores
    - Gerencia configurações de qualidade e formato
+   - Implementa captura contínua para streaming
+   - Otimiza detecção e transmissão de mudanças na tela
 
 3. **`system_collector.py`**
    - Coleta informações gerais do sistema
@@ -437,6 +469,7 @@ Opções adicionais:
    - Implementa protocolo de comunicação
    - Valida entradas e saídas de dados
    - Gerencia streaming de webcam
+   - Gerencia streaming de webcam e tela
    - Manipula operações de arquivo
 
 3. **`data_sender.py`**
@@ -476,6 +509,9 @@ Opções adicionais:
    - Gerencia configurações de captura
    - Controla intervalo e qualidade
    - Processa solicitações de captura
+   - Implementa modo de streaming contínuo
+   - Gerencia threads de streaming da tela
+   - Otimiza estratégias de compressão
 
 5. **`system_manager.py`**
    - Gerencia dados do sistema
@@ -500,6 +536,8 @@ Opções adicionais:
    - Redimensionamento e compressão
    - Conversão entre formatos
    - Validação de imagens
+   - Otimização para streaming
+   - Comparação de imagens para detecção de mudanças
 
 2. **`logger.py`**
    - Configuração de logging centralizada
@@ -602,6 +640,9 @@ Opções adicionais:
    - Zoom e navegação
    - Salvamento e exportação
    - Atualização automática/manual
+   - Exibição de streaming contínuo de tela
+   - Controles de FPS e qualidade
+   - Indicadores de performance
 
 8. **`shell_view.py`**
    - Interface de terminal remoto
@@ -651,6 +692,8 @@ Opções adicionais:
    - Processa imagens recebidas
    - Otimiza para visualização
    - Entrega para componentes de UI
+   - Processa streaming contínuo de tela
+   - Gerencia configurações de qualidade e FPS
 
 #### Managers (`managers/`)
 
@@ -705,6 +748,24 @@ Opções adicionais:
    - Helpers de layout
 
 ## Funcionalidades Avançadas
+
+### Streaming de Tela Otimizado
+
+- **Inicialização sob demanda**:
+  - O streaming só é ativado quando explicitamente solicitado
+  - Nenhum overhead quando não está em uso
+  - Configurações flexíveis por cliente
+
+- **Performance otimizada**:
+  - Detecção de áreas modificadas para transmissão seletiva
+  - Compressão adaptativa baseada em conteúdo
+  - Ajuste dinâmico de qualidade conforme largura de banda
+  - Processamento multi-thread para minimizar latência
+
+- **Buffer de frames**:
+  - Buffer circular para eliminar jitter
+  - Priorização de frames mais recentes
+  - Descarte inteligente em caso de sobrecarga
 
 ### Streaming de Webcam Otimizado
 

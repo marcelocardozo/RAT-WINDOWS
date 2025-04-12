@@ -7,6 +7,7 @@ from gui.process_view import ProcessWindow
 from gui.shell_view import ShellWindow
 from gui.file_manager_view import FileManagerWindow
 from gui.webcam_view import WebcamWindow
+from gui.screen_stream_view import ScreenStreamWindow
 import core.protocol
 import json
 logger = logging.getLogger("server.window_manager")
@@ -19,7 +20,8 @@ class WindowManager:
         self.process_windows = {}
         self.shell_windows = {}
         self.file_manager_windows = {}
-        self.webcam_windows = {}  # Novo dicionário para janelas de webcam
+        self.webcam_windows = {}
+        self.screen_stream_windows = {}  # Novo dicionário para janelas de stream de tela
         self.closing_windows = set()
     def display_screenshot(self, client_address, screenshot_data):
         client_key = f"{client_address[0]}:{client_address[1]}"
@@ -353,7 +355,107 @@ class WindowManager:
                     except:
                         pass
             self.webcam_windows.clear()
+        if hasattr(self, 'screen_stream_windows'):
+            for client_key, window_info in list(self.screen_stream_windows.items()):
+                if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                    try:
+                        if window_info["window"].winfo_exists():
+                            window_info["window"].destroy()
+                    except:
+                        pass
+            self.screen_stream_windows.clear()
         self.screenshot_windows.clear()
         self.process_windows.clear()
         self.shell_windows.clear()
         self.closing_windows.clear()
+    def process_screen_stream_frame(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        screen_stream_exists = False
+        screen_stream_window = None
+        if client_key in self.screen_stream_windows:
+            window_info = self.screen_stream_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        screen_stream_exists = True
+                        screen_stream_window = window_info
+                except:
+                    pass
+        if not screen_stream_exists:
+            try:
+                if core.protocol.CMD_SCREEN_STREAM_FRAME:
+                    self.server.log(f"Recebido frame de stream de tela para {client_key}, abrindo janela")
+                    window = self.open_screen_stream_window(client_address)
+                    if window and client_key in self.screen_stream_windows:
+                        screen_stream_window = self.screen_stream_windows[client_key]
+                        screen_stream_exists = True
+            except:
+                pass
+        if not screen_stream_exists:
+            self.server.log(f"Recebido frame de stream de tela para {client_key}, mas nenhuma janela foi encontrada")
+            return
+        try:
+            header_size = int.from_bytes(data[:4], byteorder='big')
+            header_data = data[4:4+header_size]
+            header = json.loads(header_data.decode('utf-8'))
+            img_size_offset = 4 + header_size
+            img_size = int.from_bytes(data[img_size_offset:img_size_offset+4], byteorder='big')
+            img_data = data[img_size_offset+4:img_size_offset+4+img_size]
+            if "process_screen_frame" in screen_stream_window and callable(screen_stream_window["process_screen_frame"]):
+                screen_stream_window["process_screen_frame"](img_data)
+        except Exception as e:
+            self.server.log(f"Erro ao processar frame de stream de tela: {str(e)}")
+    def open_screen_stream_window(self, client_address):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            self.server.log(f"Removendo {client_key} da lista de fechamento para permitir stream de tela")
+            self.closing_windows.discard(client_key)
+        if client_key in self.screen_stream_windows:
+            window_info = self.screen_stream_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        window_info["window"].focus_set()
+                        return window_info["window"]
+                except:
+                    pass
+        try:
+            screen_stream_window = ScreenStreamWindow(
+                self.main_window,
+                client_address,
+                client_key,
+                self.server,
+                self.server.log,
+                self.screen_stream_windows,
+                self.closing_windows
+            )
+            self.screen_stream_windows[client_key] = screen_stream_window.get_monitoring_info()
+            return screen_stream_window.window
+        except Exception as e:
+            self.server.log(f"Erro ao criar janela de stream de tela: {str(e)}")
+            return None
+    def process_screen_stream_response(self, client_address, cmd, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        screen_stream_exists = False
+        screen_stream_window = None
+        if client_key in self.screen_stream_windows:
+            window_info = self.screen_stream_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        screen_stream_exists = True
+                        screen_stream_window = window_info
+                except:
+                    pass
+        if not screen_stream_exists:
+            self.server.log(f"Recebida resposta de streaming de tela para {client_key}, mas nenhuma janela foi encontrada")
+            return
+        try:
+            response_text = data.decode('utf-8')
+            self.server.log(f"Resposta de streaming de tela para {client_key}: {response_text}")
+        except Exception as e:
+            self.server.log(f"Erro ao processar resposta de streaming de tela: {str(e)}")

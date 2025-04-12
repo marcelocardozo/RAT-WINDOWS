@@ -3,13 +3,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 class ClientListPanel:
     def __init__(self, parent, request_screenshot_callback, request_process_list_callback, 
-                 request_shell_callback=None, request_file_manager_callback=None,
-                 request_webcam_callback=None):
+                request_shell_callback=None, request_file_manager_callback=None,
+                request_webcam_callback=None, request_screen_stream_callback=None):
         self.request_screenshot = request_screenshot_callback
         self.request_process_list = request_process_list_callback
         self.request_shell = request_shell_callback
         self.request_file_manager = request_file_manager_callback
         self.request_webcam = request_webcam_callback
+        self.request_screen_stream = request_screen_stream_callback
         self.frame = ttk.LabelFrame(parent, text="Clientes Conectados", padding=10)
         self.frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         self._create_client_treeview()
@@ -35,6 +36,7 @@ class ClientListPanel:
     def _create_context_menu(self):
         self.context_menu = tk.Menu(self.clients_tree, tearoff=0)
         self.context_menu.add_command(label="Capturar tela", command=self.request_screenshot)
+        self.context_menu.add_command(label="Stream Tela", command=self.request_screen_stream)
         self.context_menu.add_command(label="Ver processos", command=self.request_process_list)
         if self.request_shell:
             self.context_menu.add_separator()
