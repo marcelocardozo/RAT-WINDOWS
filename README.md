@@ -21,6 +21,7 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
 - 🔒 Comunicação segura via socket
 - 🛠️ Construtor de Cliente para Geração de Executáveis
 - 📝 Histórico de atividades e métricas de sistema
+- 🔑 Editor de Registro Windows remoto
 
 ## Arquitetura
 
@@ -156,6 +157,39 @@ O Sistema de Monitoramento Remoto é uma aplicação cliente-servidor desenvolvi
 - Operações de cópia e movimentação
 - Verificação de integridade de transferências
 
+### Editor de Registro do Windows
+
+- Acesso completo e navegação pelo Registro do Windows remoto
+- Suporte para todas as principais hives do registro:
+  - HKEY_CLASSES_ROOT
+  - HKEY_CURRENT_USER
+  - HKEY_LOCAL_MACHINE
+  - HKEY_USERS
+  - HKEY_CURRENT_CONFIG
+- Visualização hierárquica em árvore das chaves do registro
+- Exibição detalhada de valores com tipos e dados
+- Operações completas de edição:
+  - Criação de novas chaves e valores
+  - Edição de valores existentes com validação por tipo
+  - Exclusão de chaves e valores
+  - Renomeação de entradas
+- Suporte para todos os tipos de dados do registro:
+  - REG_SZ (String)
+  - REG_DWORD (Valor de 32 bits)
+  - REG_BINARY (Dados binários)
+  - REG_MULTI_SZ (Múltiplas strings)
+  - REG_EXPAND_SZ (String expansível)
+- Interface visual intuitiva:
+  - Navegação por caminho direto
+  - Visualização em painéis divididos (chaves e valores)
+  - Menus de contexto para operações comuns
+  - Feedback em tempo real das operações
+- Tratamento robusto de erros e permissões
+- Validação de dados por tipo para evitar corrupção do registro
+- Confirmação para operações potencialmente perigosas
+- Atualização automática após modificações
+- Histórico de navegação para fácil retorno a chaves visitadas anteriormente
+
 ### Shell Remota
 
 - Execução de comandos remotos em tempo real
@@ -266,6 +300,20 @@ O sistema utiliza um protocolo binário proprietário baseado em comandos identi
   - `CMD_WEBCAM_CAPTURE_RESPONSE` (53): Resposta com frame capturado
   - `CMD_WEBCAM_STREAM_START` (54): Iniciar streaming contínuo
   - `CMD_WEBCAM_STREAM_STOP` (55): Parar streaming
+
+- **Editor de Registro**
+  - `CMD_REGISTRY_LIST` (80): Solicitação de listagem de chaves
+  - `CMD_REGISTRY_LIST_RESPONSE` (81): Resposta com chaves e valores
+  - `CMD_REGISTRY_READ` (82): Solicitação de leitura de valor
+  - `CMD_REGISTRY_READ_RESPONSE` (83): Resposta com dados do valor
+  - `CMD_REGISTRY_WRITE` (84): Solicitação de escrita de valor
+  - `CMD_REGISTRY_WRITE_RESPONSE` (85): Confirmação de escrita
+  - `CMD_REGISTRY_DELETE_VALUE` (86): Solicitação de exclusão de valor
+  - `CMD_REGISTRY_DELETE_VALUE_RESPONSE` (87): Confirmação de exclusão
+  - `CMD_REGISTRY_CREATE_KEY` (88): Solicitação de criação de chave
+  - `CMD_REGISTRY_CREATE_KEY_RESPONSE` (89): Confirmação de criação
+  - `CMD_REGISTRY_DELETE_KEY` (90): Solicitação de exclusão de chave
+  - `CMD_REGISTRY_DELETE_KEY_RESPONSE` (91): Confirmação de exclusão
 
 - **Histórico**
   - `CMD_HISTORY_GET` (70): Solicitar dados históricos
@@ -587,6 +635,16 @@ Opções adicionais:
    - Implementa políticas de retenção de dados
    - Fornece APIs para consulta e análise de histórico
 
+8. **`registry_manager.py`**
+   - Interface para gerenciamento do registro do Windows
+   - Acesso controlado às hives do registro através do WinReg
+   - Listagem hierárquica de chaves e valores
+   - Operações CRUD (Criar, Ler, Atualizar, Deletar) para chaves e valores
+   - Validação de tipo e formato de dados
+   - Tratamento seguro de permissões e erros
+   - Mapeamento entre tipos internos do registro e representações amigáveis
+   - Sanitização e validação de entradas para prevenir danos ao registro
+
 #### Utils (`utils/`)
 
 1. **`image_utils.py`**
@@ -738,7 +796,20 @@ Opções adicionais:
     - Coordenação de atualizações
     - Gerenciamento de recursos visuais
 
-12. **`history_view.py`**
+12. **`registry_view.py`**
+    - Interface completa para o editor de registro
+    - Visualização em árvore de chaves e valores
+    - Navegação por caminho direto
+    - Visualização em painel dividido (chaves e valores)
+    - Menus de contexto para operações
+    - Formulários de edição tipados para valores
+    - Validação de entrada por tipo de dado
+    - Confirmação para operações críticas
+    - Atualizações em tempo real após modificações
+    - Tratamento visual de erros e permissões
+    - Histórico de navegação e breadcrumbs
+
+13. **`history_view.py`**
     - Visualização de dados históricos
     - Gráficos de tendência interativos
     - Filtros por período e métricas
@@ -892,6 +963,36 @@ Opções adicionais:
   - Liberação automática de câmeras não utilizadas
   - Limite de erros consecutivos antes de parar
 
+### Editor de Registro Windows Avançado
+
+- **Inicialização sob demanda**:
+  - Interface carregada apenas quando solicitada
+  - Otimização de recursos e desempenho
+  - Carga preguiçosa (lazy loading) de dados
+
+- **Navegação otimizada**:
+  - Sistema de busca e filtro para chaves e valores
+  - Histórico de navegação com breadcrumbs
+  - Favoritos para acesso rápido a chaves frequentes
+  - Suporte para copiar/colar caminhos completos
+
+- **Operações em lote**:
+  - Importação/exportação de chaves completas
+  - Operações recursivas (excluir com subchaves)
+  - Confirmação para operações potencialmente perigosas
+
+- **Validação inteligente**:
+  - Verificação de tipos de dados por validadores específicos
+  - Sugestões de formato para dados binários e hex
+  - Prevenção de entradas que poderiam danificar o registro
+  - Restauração automática em caso de falha de operação
+
+- **Informações detalhadas**:
+  - Visualização de permissões por chave
+  - Detecção de valores protegidos pelo sistema
+  - Documentação integrada sobre chaves comuns
+  - Alertas para modificações em áreas sensíveis
+
 ### Gerenciamento de Arquivos Remoto
 
 - **Navegação completa**:
@@ -953,4 +1054,4 @@ Marcelo Cardozo
 ---
 
 **Nota**: Esta documentação está sujeita a alterações. Sempre consulte a
-**versão mais recente.    
+**versão mais recente.

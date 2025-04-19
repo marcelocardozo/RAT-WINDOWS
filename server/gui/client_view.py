@@ -5,7 +5,7 @@ class ClientListPanel:
     def __init__(self, parent, request_screenshot_callback, request_process_list_callback, 
                 request_shell_callback=None, request_file_manager_callback=None,
                 request_webcam_callback=None, request_screen_stream_callback=None,
-                request_browser_history_callback=None):  # Novo callback
+                request_browser_history_callback=None, request_registry_callback=None):  # Novo callback
         self.request_screenshot = request_screenshot_callback
         self.request_process_list = request_process_list_callback
         self.request_shell = request_shell_callback
@@ -13,6 +13,7 @@ class ClientListPanel:
         self.request_webcam = request_webcam_callback
         self.request_screen_stream = request_screen_stream_callback
         self.request_browser_history = request_browser_history_callback  # Novo callback
+        self.request_registry = request_registry_callback  # Save the new callback
         self.frame = ttk.LabelFrame(parent, text="Clientes Conectados", padding=10)
         self.frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         self._create_client_treeview()
@@ -45,6 +46,8 @@ class ClientListPanel:
             self.context_menu.add_command(label="Shell remota", command=self.request_shell)
         if self.request_file_manager:
             self.context_menu.add_command(label="Gerenciador de arquivos", command=self.request_file_manager)
+        if self.request_registry:  # Add registry editor option
+            self.context_menu.add_command(label="Editor de registro", command=self.request_registry)
         if self.request_webcam:
             self.context_menu.add_separator()
             self.context_menu.add_command(label="Visualizar webcam", command=self.request_webcam)

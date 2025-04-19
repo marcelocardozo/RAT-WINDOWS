@@ -174,3 +174,7 @@ class SocketServer:
         if hasattr(self, 'window_manager') and self.window_manager:
             return self.window_manager.open_browser_history_window(client_address)
         return None
+    def open_registry_window(self, client_address):
+        if hasattr(self, 'window_manager') and self.window_manager:
+            return self.window_manager.open_registry_window(client_address)
+        return None
